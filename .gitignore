@@ -1,0 +1,21 @@
+# Android & Gradle
+/build/
+*/build/
+.gradle/
+/local.properties
+/.idea/
+*.iml
+captures/**
+# Gradle Wrapper
+/gradle/wrapper/gradle-wrapper.properties
+# Crashlytics files
+crashlytics.properties
+# Google Services JSON
+/google-services.json
+# Misc
+.DS_Store
+# Keystore files
+*.jks
+# Generated files
+*.apk
+*.ap_
