@@ -16,6 +16,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuoteApp() {
     var quote by remember { mutableStateOf("Quote") }
@@ -35,7 +36,7 @@ fun QuoteApp() {
                 value = quote,
                 onValueChange = { quote = it },
                 label = { Text("Quote") },
-                modifier = Modifier.fillMaxSize().weight(1f)
+                modifier = Modifier.fillMaxWidth().weight(1f)
             )
             OutlinedTextField(
                 value = author,
