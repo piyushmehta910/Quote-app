@@ -7,7 +7,7 @@
 *.iml
 captures/**
 # Gradle Wrapper
-/gradle/wrapper/gradle-wrapper.properties
+# gradle-wrapper.properties must be committed for CI builds
 # Crashlytics files
 crashlytics.properties
 # Google Services JSON
