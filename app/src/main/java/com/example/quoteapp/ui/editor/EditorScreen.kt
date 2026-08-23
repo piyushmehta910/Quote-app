@@ -27,7 +27,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FormatAlignCenter
 import androidx.compose.material.icons.filled.FormatAlignLeft
 import androidx.compose.material.icons.filled.FormatAlignRight
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
+import androidx.compose.material.icons.automirrored.filled.FormatAlignRight
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
@@ -149,7 +153,7 @@ fun EditorScreen(
                 title = { Text("Quote Editor") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -571,7 +575,7 @@ private fun StyleTab(
         ) {
             IconButton(onClick = { updateStyle(currentStyle.copy(alignment = TextAlign.LEFT)) }) {
                 Icon(
-                    Icons.Filled.FormatAlignLeft,
+                    Icons.AutoMirrored.Filled.FormatAlignLeft,
                     contentDescription = "Align Left",
                     tint = if (currentStyle.alignment == TextAlign.LEFT) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -587,7 +591,7 @@ private fun StyleTab(
             }
             IconButton(onClick = { updateStyle(currentStyle.copy(alignment = TextAlign.RIGHT)) }) {
                 Icon(
-                    Icons.Filled.FormatAlignRight,
+                    Icons.AutoMirrored.Filled.FormatAlignRight,
                     contentDescription = "Align Right",
                     tint = if (currentStyle.alignment == TextAlign.RIGHT) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -814,7 +818,7 @@ private fun BottomActionBar(
         ) {
             IconButton(onClick = onUndo, enabled = canUndo) {
                 Icon(
-                    Icons.Filled.Undo,
+                    Icons.AutoMirrored.Filled.Undo,
                     contentDescription = "Undo",
                     tint = if (canUndo) MaterialTheme.colorScheme.onSurface
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -822,7 +826,7 @@ private fun BottomActionBar(
             }
             IconButton(onClick = onRedo, enabled = canRedo) {
                 Icon(
-                    Icons.Filled.Redo,
+                    Icons.AutoMirrored.Filled.Redo,
                     contentDescription = "Redo",
                     tint = if (canRedo) MaterialTheme.colorScheme.onSurface
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
