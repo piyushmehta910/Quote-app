@@ -24,9 +24,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AlignCenter
-import androidx.compose.material.icons.filled.AlignLeft
-import androidx.compose.material.icons.filled.AlignRight
+import androidx.compose.material.icons.filled.FormatAlignCenter
+import androidx.compose.material.icons.filled.FormatAlignLeft
+import androidx.compose.material.icons.filled.FormatAlignRight
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Save
@@ -560,7 +560,7 @@ private fun StyleTab(
         ) {
             IconButton(onClick = { updateStyle(currentStyle.copy(alignment = TextAlign.LEFT)) }) {
                 Icon(
-                    Icons.Filled.AlignLeft,
+                    Icons.Filled.FormatAlignLeft,
                     contentDescription = "Align Left",
                     tint = if (currentStyle.alignment == TextAlign.LEFT) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -568,7 +568,7 @@ private fun StyleTab(
             }
             IconButton(onClick = { updateStyle(currentStyle.copy(alignment = TextAlign.CENTER)) }) {
                 Icon(
-                    Icons.Filled.AlignCenter,
+                    Icons.Filled.FormatAlignCenter,
                     contentDescription = "Align Center",
                     tint = if (currentStyle.alignment == TextAlign.CENTER) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -576,7 +576,7 @@ private fun StyleTab(
             }
             IconButton(onClick = { updateStyle(currentStyle.copy(alignment = TextAlign.RIGHT)) }) {
                 Icon(
-                    Icons.Filled.AlignRight,
+                    Icons.Filled.FormatAlignRight,
                     contentDescription = "Align Right",
                     tint = if (currentStyle.alignment == TextAlign.RIGHT) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant

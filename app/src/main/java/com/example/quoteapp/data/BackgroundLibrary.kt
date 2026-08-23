@@ -62,8 +62,4 @@ object BackgroundLibrary {
         get() = solidColors + gradients + patterns
 
     fun getById(id: String): QuoteBackground? = all.find { it.id == id }
-
-    fun getSolidColors(): List<QuoteBackground.SolidColor> = solidColors
-    fun getGradients(): List<QuoteBackground.Gradient> = gradients
-    fun getPatterns(): List<QuoteBackground.Programmatic> = patterns
 }

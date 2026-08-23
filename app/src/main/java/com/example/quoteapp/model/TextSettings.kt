@@ -43,11 +43,11 @@ data class TextSettings(
 ) : Parcelable
 
 @Parcelize
-enum class FontFamily(val displayName: String, val androidTypeface: Int) : Parcelable {
-    DEFAULT("Default", Typeface.NORMAL),
-    SERIF("Serif", Typeface.SERIF),
-    SANS_SERIF("Sans Serif", Typeface.SANS_SERIF),
-    MONOSPACE("Monospace", Typeface.MONOSPACE);
+enum class FontFamily(val displayName: String) : Parcelable {
+    DEFAULT("Default"),
+    SERIF("Serif"),
+    SANS_SERIF("Sans Serif"),
+    MONOSPACE("Monospace");
 
     fun typeface(style: Int = Typeface.NORMAL): Typeface {
         return when (this) {

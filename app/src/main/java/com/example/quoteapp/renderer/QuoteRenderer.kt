@@ -337,7 +337,6 @@ object QuoteRenderer {
 
             if (style.strokeEnabled) {
                 strokeWidth = style.strokeWidth * canvasHeight / 1080f
-                strokeColor = style.strokeColor.toInt()
                 this@apply.style = Paint.Style.FILL_AND_STROKE
             }
         }
