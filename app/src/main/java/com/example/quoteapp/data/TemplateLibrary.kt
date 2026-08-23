@@ -4,7 +4,7 @@ import com.example.quoteapp.model.*
 
 object TemplateLibrary {
 
-    private val templates: List<QuoteTemplate> = listOf(
+    val templates: List<QuoteTemplate> = listOf(
         QuoteTemplate(id="t1", name="Midnight Drive", category=TemplateCategory.MOTIVATION,
             background=QuoteBackground.Gradient(listOf(0xFF0C0C1DL, 0xFF1A1A3EL), 180f, GradientType.LINEAR),
             quoteStyle=TextSettings(fontFamily=FontFamily.SANS_SERIF, fontSize=48f, isBold=true, color=0xFFFFFFFFL, positionY=0.4f),
