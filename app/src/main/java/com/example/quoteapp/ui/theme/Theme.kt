@@ -1,6 +1,5 @@
 package com.example.quoteapp.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,40 +8,48 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple200,
-    secondary = Teal200,
-    tertiary = AccentOrange,
-    background = BackgroundDark,
-    surface = SurfaceDark,
-    surfaceVariant = CardDark,
-    onPrimary = BackgroundDark,
-    onSecondary = BackgroundDark,
-    onBackground = TextPrimaryDark,
-    onSurface = TextPrimaryDark,
-    onSurfaceVariant = TextSecondaryDark,
-    outline = DividerDark
-)
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple500,
-    secondary = Teal700,
-    tertiary = AccentOrange,
+    primary = Primary,
+    onPrimary = SurfaceLight,
+    primaryContainer = PrimaryLight,
+    onPrimaryContainer = OnBackgroundLight,
+    secondary = Secondary,
+    onSecondary = SurfaceLight,
+    secondaryContainer = SecondaryVariant,
+    onSecondaryContainer = OnBackgroundLight,
+    tertiary = Tertiary,
     background = BackgroundLight,
+    onBackground = OnBackgroundLight,
     surface = SurfaceLight,
-    surfaceVariant = CardLight,
-    onPrimary = BackgroundLight,
-    onSecondary = BackgroundLight,
-    onBackground = TextPrimaryLight,
-    onSurface = TextPrimaryLight,
-    onSurfaceVariant = TextSecondaryLight,
-    outline = DividerLight
+    onSurface = OnSurfaceLight,
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = OutlineLight,
+    error = ErrorColor,
+    onError = SurfaceLight
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = PrimaryLight,
+    onPrimary = BackgroundDark,
+    primaryContainer = PrimaryVariant,
+    onPrimaryContainer = OnBackgroundDark,
+    secondary = Secondary,
+    onSecondary = BackgroundDark,
+    secondaryContainer = SecondaryVariant,
+    onSecondaryContainer = OnBackgroundDark,
+    tertiary = Tertiary,
+    background = BackgroundDark,
+    onBackground = OnBackgroundDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    outline = OutlineDark,
+    error = ErrorColor,
+    onError = BackgroundDark
 )
 
 @Composable
@@ -58,15 +65,6 @@ fun QuoteAppTheme(
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
-    }
-
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-        }
     }
 
     MaterialTheme(

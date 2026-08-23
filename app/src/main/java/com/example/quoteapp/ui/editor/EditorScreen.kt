@@ -55,6 +55,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -217,25 +218,35 @@ fun EditorScreen(
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                contentColor = MaterialTheme.colorScheme.primary,
+                indicator = { tabPositions ->
+                    if (selectedTab < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier,
+                            height = 3.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                divider = {}
             ) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0; viewModel.setActiveTab(EditorTab.TEXT) },
-                    text = { Text("Text") },
-                    icon = { Icon(Icons.Filled.TextFields, contentDescription = null) }
+                    text = { Text("Text", style = MaterialTheme.typography.labelMedium) },
+                    icon = { Icon(Icons.Filled.TextFields, contentDescription = null, modifier = Modifier.size(18.dp)) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1; viewModel.setActiveTab(EditorTab.STYLE) },
-                    text = { Text("Style") },
-                    icon = { Icon(Icons.Filled.TextFormat, contentDescription = null) }
+                    text = { Text("Style", style = MaterialTheme.typography.labelMedium) },
+                    icon = { Icon(Icons.Filled.TextFormat, contentDescription = null, modifier = Modifier.size(18.dp)) }
                 )
                 Tab(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2; viewModel.setActiveTab(EditorTab.BACKGROUND) },
-                    text = { Text("Settings") },
-                    icon = { Icon(Icons.Filled.Tune, contentDescription = null) }
+                    text = { Text("Canvas", style = MaterialTheme.typography.labelMedium) },
+                    icon = { Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(18.dp)) }
                 )
             }
 
@@ -610,6 +621,54 @@ private fun StyleTab(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 )
+            }
+        }
+
+        Text(
+            text = "Color",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        val colorPresets = listOf(
+            0xFFFFFFFFL to "White",
+            0xFF1A1A2EL to "Dark",
+            0xFF6C63FFL to "Purple",
+            0xFFFF6584L to "Pink",
+            0xFF3B82F6L to "Blue",
+            0xFF27AE60L to "Green",
+            0xFFF59E0BL to "Amber",
+            0xFFE74C3CL to "Red",
+            0xFFD4AF37L to "Gold",
+            0xFF888888L to "Gray"
+        )
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(colorPresets.size) { index ->
+                val (color, name) = colorPresets[index]
+                val isSelected = currentStyle.color == color
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(color))
+                        .then(
+                            if (isSelected) Modifier.padding(2.dp)
+                            else Modifier
+                        )
+                        .clickable { updateStyle(currentStyle.copy(color = color)) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(1.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White.copy(alpha = 0.3f))
+                        )
+                    }
+                }
             }
         }
     }

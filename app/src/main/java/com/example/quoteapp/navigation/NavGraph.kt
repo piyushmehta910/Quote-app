@@ -1,6 +1,11 @@
 package com.example.quoteapp.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -61,17 +66,25 @@ fun AppNavigation() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    val showBottomBar = currentDestination?.route in listOf(
+    val bottomBarRoutes = listOf(
         Screen.Home.route,
         Screen.Projects.route,
         Screen.Templates.route,
         Screen.Favorites.route
     )
 
+    val showBottomBar = currentDestination?.route?.let { route ->
+        bottomBarRoutes.any { route.startsWith(it) }
+    } ?: false
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp
+                ) {
                     bottomNavItems.forEach { item ->
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.label) },
@@ -95,7 +108,23 @@ fun AppNavigation() {
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = {
+                fadeIn(tween(200)) + slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Start, tween(250)
+                )
+            },
+            exitTransition = {
+                fadeOut(tween(200))
+            },
+            popEnterTransition = {
+                fadeIn(tween(200)) + slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.End, tween(250)
+                )
+            },
+            popExitTransition = {
+                fadeOut(tween(200))
+            }
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(
@@ -105,6 +134,10 @@ fun AppNavigation() {
                     },
                     onNavigateToTemplates = {
                         navController.navigate(Screen.Templates.route)
+                    },
+                    onNavigateToEditorWithQuote = { quoteText, author ->
+                        val route = Screen.Editor.createRoute(quoteText = quoteText)
+                        navController.navigate(route)
                     }
                 )
             }
@@ -130,8 +163,7 @@ fun AppNavigation() {
                     onNavigateToEditor = { templateId ->
                         val route = Screen.Editor.createRoute(templateId = templateId)
                         navController.navigate(route)
-                    },
-                    onNavigateBack = { navController.popBackStack() }
+                    }
                 )
             }
 

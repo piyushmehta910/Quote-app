@@ -1,10 +1,14 @@
 package com.example.quoteapp.ui.projects
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -21,53 +25,37 @@ import com.example.quoteapp.model.Project
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProjectsScreen(
     onNavigateToEditor: (projectId: String) -> Unit,
     viewModel: ProjectsViewModel = viewModel()
 ) {
     val projects by viewModel.projects.collectAsState()
-    var showFavoritesOnly by remember { mutableStateOf(false) }
     var projectToDelete by remember { mutableStateOf<Project?>(null) }
     var showRenameDialog by remember { mutableStateOf<Project?>(null) }
 
-    val displayedProjects = if (showFavoritesOnly) {
-        projects.filter { it.isFavorite }
-    } else {
-        projects
-    }
-
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("My Projects") }
-        )
-
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            FilterChip(
-                selected = !showFavoritesOnly,
-                onClick = { showFavoritesOnly = false },
-                label = { Text("All") },
-                leadingIcon = if (!showFavoritesOnly) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                } else null
+            Text(
+                text = "My Projects",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
-            FilterChip(
-                selected = showFavoritesOnly,
-                onClick = { showFavoritesOnly = true },
-                label = { Text("Favorites") },
-                leadingIcon = if (showFavoritesOnly) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                } else null
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${projects.size} project${if (projects.size != 1) "s" else ""}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        if (displayedProjects.isEmpty()) {
+        if (projects.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -79,19 +67,19 @@ fun ProjectsScreen(
                         Icons.Default.FolderOpen,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        if (showFavoritesOnly) "No favorite projects yet" else "No projects yet",
+                        "No projects yet",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "Create a quote to get started",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -99,15 +87,16 @@ fun ProjectsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(displayedProjects, key = { it.id }) { project ->
+                itemsIndexed(projects, key = { _, p -> p.id }) { index, project ->
                     ProjectCard(
                         project = project,
                         onClick = { onNavigateToEditor(project.id) },
                         onFavorite = { viewModel.toggleFavorite(project.id) },
                         onDelete = { projectToDelete = project },
-                        onRename = { showRenameDialog = project }
+                        onRename = { showRenameDialog = project },
+                        enterDelay = index * 30
                     )
                 }
             }
@@ -141,13 +130,14 @@ fun ProjectsScreen(
                     value = newName,
                     onValueChange = { newName = it },
                     label = { Text("Project name") },
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     if (newName.isNotBlank()) {
-                        viewModel.renameProject(project.id, newName)
+                        viewModel.renameProject(project.id, newName.trim())
                     }
                     showRenameDialog = null
                 }) { Text("Rename") }
@@ -165,66 +155,85 @@ private fun ProjectCard(
     onClick: () -> Unit,
     onFavorite: () -> Unit,
     onDelete: () -> Unit,
-    onRename: () -> Unit
+    onRename: () -> Unit,
+    enterDelay: Int = 0
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp)
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(250, delayMillis = enterDelay)) + slideInVertically(tween(250, delayMillis = enterDelay)) { it / 4 }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    project.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Row {
-                    IconButton(onClick = onFavorite, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            if (project.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (project.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    IconButton(onClick = onRename, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        project.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = onFavorite, modifier = Modifier.size(40.dp)) {
+                            Icon(
+                                if (project.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (project.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(onClick = onRename, modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
+                if (project.quote.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        project.quote,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (project.author.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        "\u2014 ${project.author}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        dateFormat.format(Date(project.updatedAt)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                project.quote,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (project.author.isNotBlank()) {
-                Text(
-                    "— ${project.author}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                dateFormat.format(Date(project.updatedAt)),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
