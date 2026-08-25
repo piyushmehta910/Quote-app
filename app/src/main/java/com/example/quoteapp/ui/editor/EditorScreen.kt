@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -93,7 +95,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quoteapp.data.TextStylePresets
+import com.example.quoteapp.data.FontCatalog
+import com.example.quoteapp.data.GoogleFontProvider
 import com.example.quoteapp.model.AspectRatios
+import com.example.quoteapp.ui.theme.EditorLayout
 import com.example.quoteapp.model.EditorTab
 import com.example.quoteapp.model.EditorState
 import com.example.quoteapp.model.ExportFormat
@@ -111,14 +116,20 @@ import com.example.quoteapp.model.TextTarget
 import com.example.quoteapp.renderer.ExportEngine
 import kotlinx.coroutines.launch
 
-private fun FontFamily.toComposeFamily(): ComposeFontFamily = when (this) {
-    FontFamily.DEFAULT -> ComposeFontFamily.Default
-    FontFamily.SERIF -> ComposeFontFamily.Serif
-    FontFamily.SANS_SERIF -> ComposeFontFamily.SansSerif
-    FontFamily.MONOSPACE -> ComposeFontFamily.Monospace
-}
-
 private fun FontWeight.toComposeWeight(): ComposeFontWeight = ComposeFontWeight(weight)
+
+@Composable
+private fun resolveFontFamily(textStyle: TextSettings): ComposeFontFamily {
+    if (textStyle.googleFontFamily != null && GoogleFontProvider.isAvailable()) {
+        return GoogleFontProvider.getFontFamily(textStyle.googleFontFamily)
+    }
+    return when (textStyle.fontFamily) {
+        FontFamily.DEFAULT -> ComposeFontFamily.Default
+        FontFamily.SERIF -> ComposeFontFamily.Serif
+        FontFamily.SANS_SERIF -> ComposeFontFamily.SansSerif
+        FontFamily.MONOSPACE -> ComposeFontFamily.Monospace
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,6 +179,10 @@ fun EditorScreen(
         } else {
             permissionLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.initGoogleFonts()
     }
 
     LaunchedEffect(projectId, templateId, quoteText, author) {
@@ -228,66 +243,13 @@ fun EditorScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (isExporting) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            QuotePreview(
-                uiState = uiState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            )
-
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
-                indicator = { tabPositions ->
-                    if (selectedTab < tabPositions.size) {
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier,
-                            height = 3.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                divider = {}
-            ) {
-                val tabLabels = listOf("Text" to Icons.Filled.TextFields, "Style" to Icons.Filled.TextFormat, "Canvas" to Icons.Filled.Tune)
-                tabLabels.forEachIndexed { index, (label, icon) ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = {
-                            selectedTab = index
-                            viewModel.setActiveTab(
-                                when (index) { 0 -> EditorTab.TEXT; 1 -> EditorTab.STYLE; else -> EditorTab.BACKGROUND }
-                            )
-                        },
-                        text = { Text(label, style = MaterialTheme.typography.labelMedium) },
-                        icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(AppSpacing.lg)
-            ) {
+            val isTablet = this.maxWidth >= EditorLayout.tabletBreakpoint
+            val tabContent = @Composable {
                 AnimatedContent(
                     targetState = selectedTab,
                     transitionSpec = {
@@ -301,6 +263,103 @@ fun EditorScreen(
                         0 -> TextTab(uiState = uiState, viewModel = viewModel)
                         1 -> StyleTab(uiState = uiState, viewModel = viewModel)
                         2 -> SettingsTab(uiState = uiState, viewModel = viewModel)
+                    }
+                }
+            }
+
+            val tabBar = @Composable {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    indicator = { tabPositions ->
+                        if (selectedTab < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier,
+                                height = 3.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    divider = {}
+                ) {
+                    val tabLabels = listOf("Text" to Icons.Filled.TextFields, "Style" to Icons.Filled.TextFormat, "Canvas" to Icons.Filled.Tune)
+                    tabLabels.forEachIndexed { index, (label, icon) ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = {
+                                selectedTab = index
+                                viewModel.setActiveTab(
+                                    when (index) { 0 -> EditorTab.TEXT; 1 -> EditorTab.STYLE; else -> EditorTab.BACKGROUND }
+                                )
+                            },
+                            text = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                            icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+                    }
+                }
+            }
+
+            if (isTablet) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        QuotePreview(
+                            uiState = uiState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                    ) {
+                        tabBar()
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                                .padding(AppSpacing.lg)
+                        ) {
+                            tabContent()
+                        }
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (isExporting) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+
+                    QuotePreview(
+                        uiState = uiState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+
+                    tabBar()
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(AppSpacing.lg)
+                    ) {
+                        tabContent()
                     }
                 }
             }
@@ -336,6 +395,7 @@ private fun QuotePreview(
         is QuoteBackground.SolidColor -> Color(bg.color)
         is QuoteBackground.Gradient -> Color(bg.colors.firstOrNull() ?: 0xFF1A1A2EL)
         is QuoteBackground.Image -> Color.LightGray
+        is QuoteBackground.PngBackground -> Color(0xFF2A2A2A)
         is QuoteBackground.Programmatic -> Color(bg.baseColor)
     }
 
@@ -376,7 +436,7 @@ private fun QuotePreview(
                     TextAlign.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
                     TextAlign.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
                 },
-                fontFamily = quoteStyle.fontFamily.toComposeFamily(),
+                fontFamily = resolveFontFamily(quoteStyle),
                 modifier = Modifier.rotate(quoteStyle.rotation)
             )
 
@@ -400,7 +460,7 @@ private fun QuotePreview(
                         TextAlign.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
                         TextAlign.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
                     },
-                    fontFamily = authorStyle.fontFamily.toComposeFamily(),
+                    fontFamily = resolveFontFamily(authorStyle),
                     modifier = Modifier.rotate(authorStyle.rotation)
                 )
             }
@@ -490,6 +550,9 @@ private fun StyleTab(
     val updateStyle: (TextSettings) -> Unit = { newStyle ->
         viewModel.updateCurrentTextStyle(newStyle)
     }
+
+    var googleFontSearch by remember { mutableStateOf("") }
+    var selectedFontCategory by remember { mutableStateOf<FontCatalog.FontCategory?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
@@ -672,8 +735,10 @@ private fun StyleTab(
             )
             fontOptions.forEach { (label, family) ->
                 FilterChip(
-                    selected = currentStyle.fontFamily == family,
-                    onClick = { updateStyle(currentStyle.copy(fontFamily = family)) },
+                    selected = currentStyle.fontFamily == family && currentStyle.googleFontFamily == null,
+                    onClick = {
+                        updateStyle(currentStyle.copy(fontFamily = family, googleFontFamily = null))
+                    },
                     label = { Text(label, fontSize = 11.sp) },
                     modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(
@@ -681,6 +746,107 @@ private fun StyleTab(
                     )
                 )
             }
+        }
+
+        if (GoogleFontProvider.isAvailable()) {
+            Text(
+                text = "Google Fonts",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            TextField(
+                value = googleFontSearch,
+                onValueChange = { googleFontSearch = it },
+                label = { Text("Search fonts...") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                FilterChip(
+                    selected = selectedFontCategory == null,
+                    onClick = { selectedFontCategory = null },
+                    label = { Text("All", fontSize = 10.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+                FontCatalog.FontCategory.entries.forEach { cat ->
+                    FilterChip(
+                        selected = selectedFontCategory == cat,
+                        onClick = { selectedFontCategory = cat },
+                        label = { Text(cat.displayName, fontSize = 10.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
+                }
+            }
+
+            val filteredFonts = when {
+                googleFontSearch.isNotBlank() -> FontCatalog.search(googleFontSearch)
+                selectedFontCategory != null -> FontCatalog.getByCategory(selectedFontCategory!!)
+                else -> FontCatalog.getAll()
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 240.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                filteredFonts.forEach { fontEntry ->
+                    val isGoogleSelected = currentStyle.googleFontFamily == fontEntry.googleFontName
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isGoogleSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                else Color.Transparent
+                            )
+                            .clickable {
+                                updateStyle(
+                                    currentStyle.copy(
+                                        googleFontFamily = fontEntry.googleFontName,
+                                        fontFamily = FontFamily.DEFAULT
+                                    )
+                                )
+                            }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = fontEntry.displayName,
+                            fontFamily = GoogleFontProvider.getFontFamily(fontEntry.googleFontName),
+                            fontSize = 16.sp,
+                            color = if (isGoogleSelected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = fontEntry.category.displayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        } else {
+            Text(
+                text = "Google Fonts unavailable (no Play Services)",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Text(
@@ -704,7 +870,7 @@ private fun StyleTab(
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(colorPresets.size) { index ->
-                val (color, name) = colorPresets[index]
+                val (color, _) = colorPresets[index]
                 val isSelected = currentStyle.color == color
                 Box(
                     modifier = Modifier
@@ -730,6 +896,13 @@ private fun StyleTab(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        com.example.quoteapp.ui.editor.components.TextControls(
+            style = currentStyle,
+            onStyleChange = { updateStyle(it) }
+        )
     }
 }
 
@@ -738,7 +911,163 @@ private fun SettingsTab(
     uiState: EditorState,
     viewModel: EditorViewModel
 ) {
+    var bgSubTab by remember { mutableIntStateOf(0) }
+    var showGradientEditor by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Background",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val bgTabs = listOf("Solid", "Gradient", "PNG", "Pattern")
+            bgTabs.forEachIndexed { index, label ->
+                FilterChip(
+                    selected = bgSubTab == index,
+                    onClick = { bgSubTab = index },
+                    label = { Text(label, fontSize = 11.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+        }
+
+        when (bgSubTab) {
+            0 -> {
+                val solidColors = listOf(
+                    0xFF000000L, 0xFFFFFFFFL, 0xFF1A1A2EL, 0xFF16213EL,
+                    0xFF0F3460L, 0xFF533483L, 0xFF2C3E50L, 0xFF1B262CL,
+                    0xFF0A1929L, 0xFF2D2D3AL, 0xFF3C1642L, 0xFF0B0C10L,
+                    0xFFF5F5DCL, 0xFFFAF0E6L, 0xFF2E4057L, 0xFF1B1B2FL
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(solidColors.size) { index ->
+                        val color = solidColors[index]
+                        val isSelected = uiState.background is QuoteBackground.SolidColor &&
+                            uiState.background.color == color
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(color))
+                                .then(if (isSelected) Modifier.padding(2.dp) else Modifier)
+                                .clickable { viewModel.updateBackground(QuoteBackground.SolidColor(color)) }
+                        ) {
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(2.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color.White.copy(alpha = 0.3f))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            1 -> {
+                if (showGradientEditor && uiState.background is QuoteBackground.Gradient) {
+                    val gradient = uiState.background as QuoteBackground.Gradient
+                    androidx.compose.material3.TextButton(
+                        onClick = { showGradientEditor = false }
+                    ) {
+                        Text("\u2190 Back to presets")
+                    }
+                    com.example.quoteapp.ui.editor.components.GradientEditor(
+                        gradient = gradient,
+                        onGradientChange = { viewModel.updateBackground(it) }
+                    )
+                } else {
+                    val presets = com.example.quoteapp.data.GradientPresets.getAll()
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        presets.chunked(4).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                row.forEach { preset ->
+                                    val isSelected = uiState.background is QuoteBackground.Gradient &&
+                                        uiState.background.colors == preset.background.colors
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(44.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                androidx.compose.ui.graphics.Brush.linearGradient(
+                                                    colors = preset.background.colors.map { Color(it) }
+                                                )
+                                            )
+                                            .clickable {
+                                                viewModel.updateBackground(preset.background)
+                                            }
+                                    )
+                                }
+                            }
+                        }
+
+                        TextButton(onClick = {
+                            val defaultGradient = QuoteBackground.Gradient(
+                                colors = listOf(0xFF667EEA, 0xFF764BA2),
+                                angle = 135f
+                            )
+                            viewModel.updateBackground(defaultGradient)
+                            showGradientEditor = true
+                        }) {
+                            Text("Custom Gradient")
+                        }
+                    }
+                }
+            }
+            2 -> {
+                com.example.quoteapp.ui.editor.components.PngBackgroundPicker(
+                    onBackgroundSelected = { assetPath ->
+                        viewModel.updateBackground(QuoteBackground.PngBackground(assetPath = assetPath))
+                    }
+                )
+            }
+            3 -> {
+                val patterns = com.example.quoteapp.model.PatternType.entries
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(patterns.size) { index ->
+                        val pattern = patterns[index]
+                        val isSelected = uiState.background is QuoteBackground.Programmatic &&
+                            uiState.background.pattern == pattern
+                        OutlinedCard(
+                            modifier = Modifier
+                                .width(100.dp)
+                                .clickable {
+                                    viewModel.updateBackground(
+                                        QuoteBackground.Programmatic(pattern = pattern)
+                                    )
+                                },
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = pattern.name.lowercase().replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Text(
             text = "Aspect Ratio",
             style = MaterialTheme.typography.titleSmall,

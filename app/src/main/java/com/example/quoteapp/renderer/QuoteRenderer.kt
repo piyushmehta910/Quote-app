@@ -11,6 +11,8 @@ import kotlin.math.sin
 
 object QuoteRenderer {
 
+    private val bitmapCache = mutableMapOf<String, Bitmap>()
+
     fun renderToBitmap(
         state: EditorState,
         width: Int,
@@ -20,7 +22,7 @@ object QuoteRenderer {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        drawBackground(canvas, state.background, width, height, state)
+        drawBackground(canvas, state.background, width, height, state, context)
 
         if (state.overlay.opacity > 0f) {
             val paint = Paint().apply {
@@ -61,7 +63,8 @@ object QuoteRenderer {
         background: QuoteBackground,
         width: Int,
         height: Int,
-        state: EditorState
+        state: EditorState,
+        context: Context? = null
     ) {
         when (background) {
             is QuoteBackground.SolidColor -> {
@@ -70,6 +73,7 @@ object QuoteRenderer {
             }
             is QuoteBackground.Gradient -> drawGradient(canvas, background, width, height)
             is QuoteBackground.Programmatic -> drawPattern(canvas, background, width, height)
+            is QuoteBackground.PngBackground -> drawPngBackground(canvas, background, width, height, context)
             is QuoteBackground.Image -> {
                 val paint = Paint().apply { color = Color.DKGRAY }
                 canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
@@ -83,6 +87,15 @@ object QuoteRenderer {
         width: Int,
         height: Int
     ) {
+        val colorStops = gradient.colorStops
+        if (colorStops != null && colorStops.isNotEmpty()) {
+            val colors = colorStops.map { it.color.toInt() }.toIntArray()
+            val positions = colorStops.map { it.position }.toFloatArray()
+
+            drawGradientWithArrays(canvas, colors, positions, gradient.type, gradient.angle, width, height)
+            return
+        }
+
         if (gradient.colors.isEmpty()) return
 
         val colors = gradient.colors.map { it.toInt() }.toIntArray()
@@ -120,6 +133,106 @@ object QuoteRenderer {
 
         val paint = Paint().apply { this.shader = shader }
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+    }
+
+    private fun drawGradientWithArrays(
+        canvas: Canvas,
+        colors: IntArray,
+        positions: FloatArray,
+        type: GradientType,
+        angle: Float,
+        width: Int,
+        height: Int
+    ) {
+        if (colors.isEmpty()) return
+        if (colors.size == 1) {
+            val paint = Paint().apply { color = colors[0] }
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+            return
+        }
+
+        val centerX = width / 2f
+        val centerY = height / 2f
+        val radius = Math.sqrt((width * width + height * height).toDouble()).toFloat() / 2f
+
+        val shader = when (type) {
+            GradientType.LINEAR -> {
+                val rad = Math.toRadians(angle.toDouble())
+                val len = radius
+                val x0 = centerX - (len * cos(rad)).toFloat()
+                val y0 = centerY - (len * sin(rad)).toFloat()
+                val x1 = centerX + (len * cos(rad)).toFloat()
+                val y1 = centerY + (len * sin(rad)).toFloat()
+                LinearGradient(x0, y0, x1, y1, colors, positions, Shader.TileMode.CLAMP)
+            }
+            GradientType.RADIAL -> {
+                RadialGradient(centerX, centerY, radius, colors, positions, Shader.TileMode.CLAMP)
+            }
+            GradientType.SWEEP -> {
+                SweepGradient(centerX, centerY, colors, positions)
+            }
+        }
+
+        val paint = Paint().apply { this.shader = shader }
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+    }
+
+    private fun drawPngBackground(
+        canvas: Canvas,
+        png: QuoteBackground.PngBackground,
+        width: Int,
+        height: Int,
+        context: Context?
+    ) {
+        if (context == null) {
+            val paint = Paint().apply { color = Color.DKGRAY }
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+            return
+        }
+
+        try {
+            val cacheKey = "${png.assetPath}_${width}_${height}"
+            val cached = bitmapCache[cacheKey]
+            val bitmap = cached ?: run {
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                context.assets.open(png.assetPath).use { BitmapFactory.decodeStream(it, null, options) }
+                val sampleSize = calculateSampleSize(options.outWidth, options.outHeight, width, height)
+                val decodeOptions = BitmapFactory.Options().apply {
+                    inSampleSize = sampleSize
+                }
+                val loaded = context.assets.open(png.assetPath).use { BitmapFactory.decodeStream(it, null, decodeOptions) }
+                if (loaded != null) {
+                    val scaled = Bitmap.createScaledBitmap(loaded, width, height, true)
+                    if (scaled !== loaded) loaded.recycle()
+                    bitmapCache[cacheKey] = scaled
+                    scaled
+                } else null
+            }
+
+            if (bitmap != null) {
+                canvas.drawBitmap(bitmap, 0f, 0f, null)
+            } else {
+                val paint = Paint().apply { color = Color.DKGRAY }
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+            }
+        } catch (e: Exception) {
+            val paint = Paint().apply { color = Color.DKGRAY }
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        }
+    }
+
+    private fun calculateSampleSize(srcWidth: Int, srcHeight: Int, reqWidth: Int, reqHeight: Int): Int {
+        var inSampleSize = 1
+        if (srcHeight > reqHeight || srcWidth > reqWidth) {
+            val halfHeight = srcHeight / 2
+            val halfWidth = srcWidth / 2
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 
     private fun drawPattern(

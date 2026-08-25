@@ -7,6 +7,7 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class TextSettings(
     val fontFamily: FontFamily = FontFamily.DEFAULT,
+    val googleFontFamily: String? = null,
     val fontSize: Float = 48f,
     val fontWeight: FontWeight = FontWeight.NORMAL,
     val isBold: Boolean = false,

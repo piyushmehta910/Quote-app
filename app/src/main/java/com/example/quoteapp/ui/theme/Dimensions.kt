@@ -47,3 +47,7 @@ object AppIconSize {
     val xxl = 36.dp
     val empty = 64.dp
 }
+
+object EditorLayout {
+    val tabletBreakpoint = 600.dp
+}

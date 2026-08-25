@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.quoteapp.data.GoogleFontProvider
 import com.example.quoteapp.data.ProjectRepository
 import com.example.quoteapp.data.TemplateLibrary
 import com.example.quoteapp.model.*
@@ -33,6 +34,10 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     val exportComplete: StateFlow<Boolean?> = _exportComplete.asStateFlow()
 
     private var currentProjectId: String? = null
+
+    fun initGoogleFonts() {
+        GoogleFontProvider.init(getApplication())
+    }
 
     init {
         history.push(_state.value)

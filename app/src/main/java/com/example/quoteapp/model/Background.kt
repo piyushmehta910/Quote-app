@@ -18,6 +18,7 @@ sealed class QuoteBackground : Parcelable {
         val colors: List<Long>,
         val angle: Float = 0f,
         val type: GradientType = GradientType.LINEAR,
+        val colorStops: List<GradientColorStop>? = null,
         override val id: String = "gradient_${colors.hashCode()}"
     ) : QuoteBackground()
 
@@ -35,6 +36,16 @@ sealed class QuoteBackground : Parcelable {
         val overlayOpacity: Float = 0f,
         val fitMode: ImageFitMode = ImageFitMode.COVER,
         override val id: String = "image_${uri.hashCode()}"
+    ) : QuoteBackground()
+
+    @Parcelize
+    data class PngBackground(
+        val assetPath: String,
+        val blur: Float = 0f,
+        val brightness: Float = 0f,
+        val overlayColor: Long = 0x00000000L,
+        val overlayOpacity: Float = 0f,
+        override val id: String = "png_${assetPath.hashCode()}"
     ) : QuoteBackground()
 
     @Parcelize
