@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,8 +58,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -114,6 +113,8 @@ import com.example.quoteapp.model.TextAlign
 import com.example.quoteapp.model.TextSettings
 import com.example.quoteapp.model.TextTarget
 import com.example.quoteapp.renderer.ExportEngine
+import com.example.quoteapp.ui.editor.components.StyleSlider
+import com.example.quoteapp.ui.editor.components.WysiwygQuotePreview
 import kotlinx.coroutines.launch
 
 private fun FontWeight.toComposeWeight(): ComposeFontWeight = ComposeFontWeight(weight)
@@ -308,8 +309,13 @@ fun EditorScreen(
                             .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        QuotePreview(
+                        WysiwygQuotePreview(
                             uiState = uiState,
+                            onPositionChange = { target, x, y ->
+                                val current = if (target == TextTarget.QUOTE) uiState.quoteStyle else uiState.authorStyle
+                                val updated = current.copy(positionX = x, positionY = y)
+                                viewModel.updateCurrentTextStyle(updated)
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
@@ -343,8 +349,13 @@ fun EditorScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                     }
 
-                    QuotePreview(
+                    WysiwygQuotePreview(
                         uiState = uiState,
+                        onPositionChange = { target, x, y ->
+                            val current = if (target == TextTarget.QUOTE) uiState.quoteStyle else uiState.authorStyle
+                            val updated = current.copy(positionX = x, positionY = y)
+                            viewModel.updateCurrentTextStyle(updated)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
@@ -452,9 +463,10 @@ private fun QuotePreview(
                     },
                     color = Color(authorStyle.color),
                     fontSize = authorStyle.fontSize.sp,
-                    fontWeight = ComposeFontWeight.Normal,
+                    fontWeight = if (authorStyle.isBold) ComposeFontWeight.Bold else authorStyle.fontWeight.toComposeWeight(),
                     fontStyle = if (authorStyle.isItalic) FontStyle.Italic else FontStyle.Normal,
-                    letterSpacing = 0.5.sp,
+                    letterSpacing = authorStyle.letterSpacing.sp,
+                    lineHeight = (authorStyle.fontSize * authorStyle.lineHeight).sp,
                     textAlign = when (authorStyle.alignment) {
                         TextAlign.LEFT -> androidx.compose.ui.text.style.TextAlign.Left
                         TextAlign.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
@@ -668,12 +680,6 @@ private fun StyleTab(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             ToggleSwitch(
-                label = "Shadow",
-                checked = currentStyle.shadowEnabled,
-                onToggle = { updateStyle(currentStyle.copy(shadowEnabled = !currentStyle.shadowEnabled)) },
-                modifier = Modifier.weight(1f)
-            )
-            ToggleSwitch(
                 label = "Auto Fit",
                 checked = currentStyle.autoFit,
                 onToggle = { updateStyle(currentStyle.copy(autoFit = !currentStyle.autoFit)) },
@@ -713,6 +719,30 @@ private fun StyleTab(
                     contentDescription = "Align Right",
                     tint = if (currentStyle.alignment == TextAlign.RIGHT) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Text(
+            text = "Font Weight",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            FontWeight.entries.forEach { weight ->
+                val isActive = currentStyle.fontWeight == weight
+                FilterChip(
+                    selected = isActive,
+                    onClick = { updateStyle(currentStyle.copy(fontWeight = weight)) },
+                    label = { Text(weight.displayName, fontSize = 10.sp) },
+                    modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 )
             }
         }
@@ -855,47 +885,10 @@ private fun StyleTab(
             color = MaterialTheme.colorScheme.onSurface
         )
 
-        val colorPresets = listOf(
-            0xFFFFFFFFL to "White",
-            0xFF1A1A2EL to "Dark",
-            0xFF6C63FFL to "Purple",
-            0xFFFF6584L to "Pink",
-            0xFF3B82F6L to "Blue",
-            0xFF27AE60L to "Green",
-            0xFFF59E0BL to "Amber",
-            0xFFE74C3CL to "Red",
-            0xFFD4AF37L to "Gold",
-            0xFF888888L to "Gray"
+        com.example.quoteapp.ui.editor.components.ColorSwatchRow(
+            selectedColor = currentStyle.color,
+            onColorSelected = { color -> updateStyle(currentStyle.copy(color = color)) }
         )
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(colorPresets.size) { index ->
-                val (color, _) = colorPresets[index]
-                val isSelected = currentStyle.color == color
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(color))
-                        .then(
-                            if (isSelected) Modifier.padding(2.dp)
-                            else Modifier
-                        )
-                        .clickable { updateStyle(currentStyle.copy(color = color)) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(1.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White.copy(alpha = 0.3f))
-                        )
-                    }
-                }
-            }
-        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -1177,6 +1170,37 @@ private fun SettingsTab(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        var showResetDialog by remember { mutableStateOf(false) }
+
+        TextButton(
+            onClick = { showResetDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Reset to Default",
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        if (showResetDialog) {
+            AlertDialog(
+                onDismissRequest = { showResetDialog = false },
+                title = { Text("Reset Editor") },
+                text = { Text("This will reset all settings to default. This cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.reset()
+                        showResetDialog = false
+                    }) { Text("Reset", color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
     }
 }
 
@@ -1218,7 +1242,7 @@ private fun BottomActionBar(
             }
             FilledTonalButton(onClick = onExport) {
                 Icon(
-                    Icons.Filled.Save,
+                    Icons.Filled.FileDownload,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -1235,44 +1259,6 @@ private fun BottomActionBar(
                 Text("Share")
             }
         }
-    }
-}
-
-@Composable
-private fun StyleSlider(
-    label: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    step: Float,
-    onValueChange: (Float) -> Unit,
-    valueDisplay: (Float) -> String = { String.format("%.2f", it) }
-) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = valueDisplay(value),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-            steps = ((valueRange.endInclusive - valueRange.start) / step).toInt() - 1,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary
-            )
-        )
     }
 }
 
