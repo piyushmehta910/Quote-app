@@ -11,7 +11,6 @@ val Tertiary = Color(0xFF00C9A7)
 
 val BackgroundLight = Color(0xFFF8F9FC)
 val SurfaceLight = Color(0xFFFFFFFF)
-val CardLight = Color(0xFFFFFFFF)
 val OnBackgroundLight = Color(0xFF1A1C20)
 val OnSurfaceLight = Color(0xFF1A1C20)
 val OnSurfaceVariantLight = Color(0xFF6B7280)
@@ -20,7 +19,6 @@ val SurfaceVariantLight = Color(0xFFF1F3F7)
 
 val BackgroundDark = Color(0xFF0F1115)
 val SurfaceDark = Color(0xFF1A1C22)
-val CardDark = Color(0xFF22242C)
 val OnBackgroundDark = Color(0xFFE8E9ED)
 val OnSurfaceDark = Color(0xFFE8E9ED)
 val OnSurfaceVariantDark = Color(0xFF9CA3AF)
@@ -29,12 +27,3 @@ val SurfaceVariantDark = Color(0xFF22242C)
 
 val ErrorColor = Color(0xFFE74C3C)
 val SuccessColor = Color(0xFF27AE60)
-val WarningColor = Color(0xFFF39C12)
-
-val QuoteAccentPurple = Color(0xFF8B5CF6)
-val QuoteAccentPink = Color(0xFFEC4899)
-val QuoteAccentBlue = Color(0xFF3B82F6)
-val QuoteAccentAmber = Color(0xFFF59E0B)
-
-val GradientStart = Color(0xFF6C63FF)
-val GradientEnd = Color(0xFFFF6584)

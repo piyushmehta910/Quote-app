@@ -1,8 +1,16 @@
 package com.example.quoteapp.ui.editor
 
 import android.content.Intent
+import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,20 +33,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FormatAlignCenter
-import androidx.compose.material.icons.filled.FormatAlignLeft
-import androidx.compose.material.icons.filled.FormatAlignRight
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.filled.FormatAlignRight
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -61,6 +66,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -70,6 +76,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -78,7 +85,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -91,6 +100,8 @@ import com.example.quoteapp.model.ExportFormat
 import com.example.quoteapp.model.ExportQuality
 import com.example.quoteapp.model.FontFamily
 import com.example.quoteapp.model.FontWeight
+import com.example.quoteapp.ui.theme.AppAnim
+import com.example.quoteapp.ui.theme.AppSpacing
 import androidx.compose.ui.text.font.FontFamily as ComposeFontFamily
 import androidx.compose.ui.text.font.FontWeight as ComposeFontWeight
 import com.example.quoteapp.model.QuoteBackground
@@ -115,12 +126,14 @@ fun EditorScreen(
     projectId: String? = null,
     templateId: String? = null,
     quoteText: String? = null,
+    author: String? = null,
     onNavigateBack: () -> Unit = {},
     viewModel: EditorViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptic = LocalHapticFeedback.current
 
     val uiState by viewModel.state.collectAsState()
     val canUndo by viewModel.canUndo.collectAsState()
@@ -128,6 +141,15 @@ fun EditorScreen(
     val isExporting by viewModel.isExporting.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(1) }
+    var showUnsavedDialog by remember { mutableStateOf(false) }
+
+    androidx.activity.compose.BackHandler {
+        if (uiState.quote.isNotBlank() || uiState.author.isNotBlank()) {
+            showUnsavedDialog = true
+        } else {
+            onNavigateBack()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -139,11 +161,23 @@ fun EditorScreen(
         }
     }
 
-    LaunchedEffect(projectId, templateId, quoteText) {
+    val onExportClick = {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            scope.launch { performExport(context, viewModel, snackbarHostState, isShare = false) }
+        } else {
+            permissionLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
+
+    LaunchedEffect(projectId, templateId, quoteText, author) {
         when {
             projectId != null -> viewModel.loadProject(projectId)
             templateId != null -> viewModel.loadTemplate(templateId)
-            quoteText != null -> viewModel.updateQuote(quoteText)
+            quoteText != null -> {
+                viewModel.updateQuote(quoteText)
+                if (!author.isNullOrBlank()) viewModel.updateAuthor(author)
+            }
         }
     }
 
@@ -152,25 +186,25 @@ fun EditorScreen(
             TopAppBar(
                 title = { Text("Quote Editor") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (uiState.quote.isNotBlank() || uiState.author.isNotBlank()) {
+                            showUnsavedDialog = true
+                        } else {
+                            onNavigateBack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         scope.launch {
                             viewModel.saveProject()
                             snackbarHostState.showSnackbar("Project saved")
                         }
                     }) {
                         Icon(Icons.Filled.Save, contentDescription = "Save")
-                    }
-                    IconButton(onClick = {
-                        scope.launch {
-                            performExport(context, viewModel, snackbarHostState, isShare = true)
-                        }
-                    }) {
-                        Icon(Icons.Filled.Share, contentDescription = "Share")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -184,9 +218,7 @@ fun EditorScreen(
                 canRedo = canRedo,
                 onUndo = { viewModel.undo() },
                 onRedo = { viewModel.redo() },
-                onExport = {
-                    permissionLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                },
+                onExport = { onExportClick() },
                 onShare = {
                     scope.launch {
                         performExport(context, viewModel, snackbarHostState, isShare = true)
@@ -234,39 +266,62 @@ fun EditorScreen(
                 },
                 divider = {}
             ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0; viewModel.setActiveTab(EditorTab.TEXT) },
-                    text = { Text("Text", style = MaterialTheme.typography.labelMedium) },
-                    icon = { Icon(Icons.Filled.TextFields, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1; viewModel.setActiveTab(EditorTab.STYLE) },
-                    text = { Text("Style", style = MaterialTheme.typography.labelMedium) },
-                    icon = { Icon(Icons.Filled.TextFormat, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                )
-                Tab(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2; viewModel.setActiveTab(EditorTab.BACKGROUND) },
-                    text = { Text("Canvas", style = MaterialTheme.typography.labelMedium) },
-                    icon = { Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                )
+                val tabLabels = listOf("Text" to Icons.Filled.TextFields, "Style" to Icons.Filled.TextFormat, "Canvas" to Icons.Filled.Tune)
+                tabLabels.forEachIndexed { index, (label, icon) ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = {
+                            selectedTab = index
+                            viewModel.setActiveTab(
+                                when (index) { 0 -> EditorTab.TEXT; 1 -> EditorTab.STYLE; else -> EditorTab.BACKGROUND }
+                            )
+                        },
+                        text = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                        icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    )
+                }
             }
 
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(AppSpacing.lg)
             ) {
-                when (selectedTab) {
-                    0 -> TextTab(uiState = uiState, viewModel = viewModel)
-                    1 -> StyleTab(uiState = uiState, viewModel = viewModel)
-                    2 -> SettingsTab(uiState = uiState, viewModel = viewModel)
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        fadeIn(tween(AppAnim.FAST_FADE)) + slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Start, tween(AppAnim.FAST_FADE)
+                        ) togetherWith fadeOut(tween(AppAnim.FAST_FADE))
+                    },
+                    label = "tab_content"
+                ) { tab ->
+                    when (tab) {
+                        0 -> TextTab(uiState = uiState, viewModel = viewModel)
+                        1 -> StyleTab(uiState = uiState, viewModel = viewModel)
+                        2 -> SettingsTab(uiState = uiState, viewModel = viewModel)
+                    }
                 }
             }
         }
+    }
+
+    if (showUnsavedDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedDialog = false },
+            title = { Text("Unsaved Changes") },
+            text = { Text("You have unsaved changes. Do you want to leave without saving?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUnsavedDialog = false
+                    onNavigateBack()
+                }) { Text("Leave") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnsavedDialog = false }) { Text("Stay") }
+            }
+        )
     }
 }
 

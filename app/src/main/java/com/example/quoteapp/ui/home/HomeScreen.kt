@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,8 +27,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,6 +65,10 @@ import com.example.quoteapp.model.Quote
 import com.example.quoteapp.model.QuoteCategory
 import com.example.quoteapp.model.QuoteTemplate
 import com.example.quoteapp.model.Project
+import com.example.quoteapp.ui.theme.AppAnim
+import com.example.quoteapp.ui.theme.AppCornerRadius
+import com.example.quoteapp.ui.theme.AppSpacing
+import com.example.quoteapp.ui.theme.isDarkModeOverride
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -69,7 +76,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     onNavigateToEditor: (String?) -> Unit = {},
-    onNavigateToTemplates: () -> Unit = {},
+    onNavigateToTemplates: (categoryName: String?) -> Unit = { _ -> },
     onNavigateToEditorWithQuote: (String, String) -> Unit = { _, _ -> },
     viewModel: HomeViewModel = viewModel()
 ) {
@@ -98,14 +105,14 @@ fun HomeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-        contentPadding = PaddingValues(top = 24.dp, bottom = 32.dp)
+            .padding(horizontal = AppSpacing.lg),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.xxl),
+        contentPadding = PaddingValues(top = AppSpacing.xxl, bottom = AppSpacing.xxxl)
     ) {
         item {
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(tween(300)) + slideInVertically(tween(400)) { it / 2 }
+                enter = fadeIn(tween(AppAnim.FADE_DURATION)) + slideInVertically(tween(AppAnim.SLIDE_DURATION)) { it / 2 }
             ) {
                 HeaderSection()
             }
@@ -114,7 +121,7 @@ fun HomeScreen(
         item {
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(tween(400, delayMillis = 100)) + slideInVertically(tween(400, delayMillis = 100)) { it / 2 }
+                enter = fadeIn(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY)) + slideInVertically(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY)) { it / 2 }
             ) {
                 CreateQuoteCard(onClick = { onNavigateToEditor(null) })
             }
@@ -123,7 +130,7 @@ fun HomeScreen(
         item {
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(tween(400, delayMillis = 200)) + slideInVertically(tween(400, delayMillis = 200)) { it / 2 }
+                enter = fadeIn(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY * 2)) + slideInVertically(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY * 2)) { it / 2 }
             ) {
                 RandomQuoteSection(
                     quote = randomQuote,
@@ -138,12 +145,12 @@ fun HomeScreen(
         item {
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(tween(400, delayMillis = 300)) + slideInVertically(tween(400, delayMillis = 300)) { it / 2 }
+                enter = fadeIn(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY * 3)) + slideInVertically(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY * 3)) { it / 2 }
             ) {
                 TemplatesSection(
                     templates = TemplateLibrary.templates.take(8),
                     onTemplateClick = { templateId -> onNavigateToEditor(templateId) },
-                    onSeeAllClick = onNavigateToTemplates
+                    onSeeAllClick = { onNavigateToTemplates(null) }
                 )
             }
         }
@@ -151,11 +158,11 @@ fun HomeScreen(
         item {
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(tween(400, delayMillis = 400)) + slideInVertically(tween(400, delayMillis = 400)) { it / 2 }
+                enter = fadeIn(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY * 4)) + slideInVertically(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY * 4)) { it / 2 }
             ) {
                 QuickCategoriesSection(
                     categories = categories,
-                    onCategoryClick = onNavigateToTemplates
+                    onCategoryClick = { categoryName -> onNavigateToTemplates(categoryName) }
                 )
             }
         }
@@ -164,7 +171,7 @@ fun HomeScreen(
             item {
                 AnimatedVisibility(
                     visible = visible,
-                    enter = fadeIn(tween(400, delayMillis = 500)) + slideInVertically(tween(400, delayMillis = 500)) { it / 2 }
+                    enter = fadeIn(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY * 5)) + slideInVertically(tween(AppAnim.SLIDE_DURATION, delayMillis = AppAnim.STAGGER_DELAY * 5)) { it / 2 }
                 ) {
                     RecentProjectsSection(
                         projects = recentProjects.take(5),
@@ -178,19 +185,33 @@ fun HomeScreen(
 
 @Composable
 private fun HeaderSection() {
-    Column {
-        Text(
-            text = "Quote Studio",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Create beautiful quote images",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Quote Studio",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Create beautiful quote images",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        val isDark = isDarkModeOverride ?: isSystemInDarkTheme()
+        IconButton(onClick = { isDarkModeOverride = !isDark }) {
+            Icon(
+                imageVector = if (isDark) Icons.Filled.SettingsBrightness else Icons.Filled.DarkMode,
+                contentDescription = "Toggle theme",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
 
@@ -200,9 +221,9 @@ private fun CreateQuoteCard(onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(130.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(AppCornerRadius.xxl))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(AppCornerRadius.xxl),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(
@@ -287,7 +308,7 @@ private fun RandomQuoteSection(
         if (quote != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(AppCornerRadius.xl),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
@@ -327,7 +348,7 @@ private fun RandomQuoteSection(
                     FilledTonalButton(
                         onClick = { onUseQuote(quote) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(AppCornerRadius.md)
                     ) {
                         Text("Use This Quote")
                     }
@@ -336,7 +357,7 @@ private fun RandomQuoteSection(
         } else {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(AppCornerRadius.xl),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
@@ -424,15 +445,15 @@ private fun TemplatePreviewCard(
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(300, delayMillis = enterDelay)) + slideInVertically(tween(300, delayMillis = enterDelay)) { it / 3 }
+        enter = fadeIn(tween(AppAnim.FADE_DURATION, delayMillis = enterDelay)) + slideInVertically(tween(AppAnim.SLIDE_DURATION, delayMillis = enterDelay)) { it / 3 }
     ) {
         Card(
             modifier = Modifier
-                .width(110.dp)
+                .width(com.example.quoteapp.ui.theme.AppCardSize.templateCardWidth)
                 .height(150.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(AppCornerRadius.lg))
                 .clickable(onClick = onClick),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(AppCornerRadius.lg),
             colors = CardDefaults.cardColors(containerColor = Color.Transparent)
         ) {
             Column(
@@ -444,7 +465,7 @@ private fun TemplatePreviewCard(
                         .weight(1f)
                         .background(
                             color = Color(template.thumbnailColor),
-                            shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)
+                            shape = RoundedCornerShape(topStart = AppCornerRadius.lg, topEnd = AppCornerRadius.lg)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -479,7 +500,7 @@ private fun TemplatePreviewCard(
 @Composable
 private fun QuickCategoriesSection(
     categories: List<Pair<QuoteCategory, String>>,
-    onCategoryClick: () -> Unit
+    onCategoryClick: (String) -> Unit
 ) {
     Column {
         Text(
@@ -498,13 +519,13 @@ private fun QuickCategoriesSection(
             items(categories, key = { it.first.name }) { (category, displayName) ->
                 FilterChip(
                     selected = false,
-                    onClick = onCategoryClick,
+                    onClick = { onCategoryClick(displayName) },
                     label = { Text(displayName) },
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(AppCornerRadius.xxl)
                 )
             }
         }
@@ -547,9 +568,9 @@ private fun ProjectCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(AppCornerRadius.md))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(AppCornerRadius.md),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )

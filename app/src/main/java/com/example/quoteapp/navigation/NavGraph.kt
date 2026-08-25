@@ -5,13 +5,22 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.Icon
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -28,14 +37,20 @@ import com.example.quoteapp.ui.templates.TemplatesScreen
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
-    data object Editor : Screen("editor?projectId={projectId}&templateId={templateId}&quoteText={quoteText}") {
-        fun createRoute(projectId: String? = null, templateId: String? = null, quoteText: String? = null): String {
+    data object Editor : Screen("editor?projectId={projectId}&templateId={templateId}&quoteText={quoteText}&author={author}") {
+        fun createRoute(
+            projectId: String? = null,
+            templateId: String? = null,
+            quoteText: String? = null,
+            author: String? = null
+        ): String {
             return buildString {
                 append("editor")
                 val params = mutableListOf<String>()
                 projectId?.let { params.add("projectId=$it") }
                 templateId?.let { params.add("templateId=$it") }
                 quoteText?.let { params.add("quoteText=$it") }
+                author?.let { params.add("author=$it") }
                 if (params.isNotEmpty()) {
                     append("?${params.joinToString("&")}")
                 }
@@ -56,7 +71,7 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem("Home", Icons.Default.Home, Screen.Home),
     BottomNavItem("Projects", Icons.Default.Folder, Screen.Projects),
-    BottomNavItem("Templates", Icons.Default.Style, Screen.Templates),
+    BottomNavItem("Templates", Icons.Default.GridView, Screen.Templates),
     BottomNavItem("Favorites", Icons.Default.Favorite, Screen.Favorites),
 )
 
@@ -132,11 +147,11 @@ fun AppNavigation() {
                         val route = Screen.Editor.createRoute(templateId = templateId)
                         navController.navigate(route)
                     },
-                    onNavigateToTemplates = {
+                    onNavigateToTemplates = { categoryName ->
                         navController.navigate(Screen.Templates.route)
                     },
                     onNavigateToEditorWithQuote = { quoteText, author ->
-                        val route = Screen.Editor.createRoute(quoteText = quoteText)
+                        val route = Screen.Editor.createRoute(quoteText = quoteText, author = author)
                         navController.navigate(route)
                     }
                 )
@@ -148,12 +163,14 @@ fun AppNavigation() {
                     navArgument("projectId") { type = NavType.StringType; nullable = true; defaultValue = null },
                     navArgument("templateId") { type = NavType.StringType; nullable = true; defaultValue = null },
                     navArgument("quoteText") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("author") { type = NavType.StringType; nullable = true; defaultValue = null },
                 )
             ) { backStackEntry ->
                 EditorScreen(
                     projectId = backStackEntry.arguments?.getString("projectId"),
                     templateId = backStackEntry.arguments?.getString("templateId"),
                     quoteText = backStackEntry.arguments?.getString("quoteText"),
+                    author = backStackEntry.arguments?.getString("author"),
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
@@ -170,7 +187,11 @@ fun AppNavigation() {
             composable(Screen.Favorites.route) {
                 FavoritesScreen(
                     onNavigateToEditor = { quoteText, author ->
-                        val route = Screen.Editor.createRoute(quoteText = quoteText)
+                        val route = Screen.Editor.createRoute(quoteText = quoteText, author = author)
+                        navController.navigate(route)
+                    },
+                    onNavigateToTemplate = { templateId ->
+                        val route = Screen.Editor.createRoute(templateId = templateId)
                         navController.navigate(route)
                     }
                 )

@@ -6,15 +6,39 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,15 +50,19 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quoteapp.model.QuoteTemplate
 import com.example.quoteapp.model.TemplateCategory
+import com.example.quoteapp.ui.components.EmptyState
+import com.example.quoteapp.ui.components.ScreenHeader
+import com.example.quoteapp.ui.theme.AppAnim
+import com.example.quoteapp.ui.theme.AppCornerRadius
+import com.example.quoteapp.ui.theme.AppIconSize
+import com.example.quoteapp.ui.theme.AppSpacing
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TemplatesScreen(
     onNavigateToEditor: (templateId: String) -> Unit,
     viewModel: TemplatesViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var showSearch by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf<TemplateCategory?>(null) }
 
     val templates by viewModel.templates.collectAsState()
@@ -52,30 +80,15 @@ fun TemplatesScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = "Templates",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "${templates.size} templates available",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        ScreenHeader(
+            title = "Templates",
+            subtitle = "${templates.size} templates available"
+        )
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = AppSpacing.lg)
         ) {
             OutlinedTextField(
                 value = searchQuery,
@@ -90,24 +103,21 @@ fun TemplatesScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(AppCornerRadius.lg),
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppSpacing.sm))
 
-            ScrollableTabRow(
-                selectedTabIndex = if (selectedCategory == null) 0 else TemplateCategory.entries.indexOf(selectedCategory) + 1,
-                edgePadding = 0.dp,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
-                divider = {}
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 FilterChip(
                     selected = selectedCategory == null,
                     onClick = { selectedCategory = null },
                     label = { Text("All") },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(AppCornerRadius.md)
                 )
                 TemplateCategory.entries.forEach { category ->
                     FilterChip(
@@ -116,47 +126,25 @@ fun TemplatesScreen(
                             selectedCategory = if (selectedCategory == category) null else category
                         },
                         label = { Text(category.displayName) },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(AppCornerRadius.md)
                     )
                 }
             }
         }
 
         if (filteredTemplates.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.SearchOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "No templates found",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Try a different search or category",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                }
-            }
+            EmptyState(
+                icon = Icons.Default.SearchOff,
+                title = "No templates found",
+                subtitle = "Try a different search or category"
+            )
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(AppSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.md)
             ) {
                 itemsIndexed(filteredTemplates, key = { _, t -> t.id }) { index, template ->
                     TemplateCard(
@@ -164,7 +152,7 @@ fun TemplatesScreen(
                         isFavorited = template.id in favoriteIds,
                         onClick = { onNavigateToEditor(template.id) },
                         onFavoriteToggle = { viewModel.toggleFavorite(template.id) },
-                        enterDelay = index * 30
+                        enterDelay = index * AppAnim.STAGGER_DELAY
                     )
                 }
             }
@@ -185,80 +173,105 @@ private fun TemplateCard(
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(250, delayMillis = enterDelay)) + slideInVertically(tween(250, delayMillis = enterDelay)) { it / 4 }
+        enter = fadeIn(tween(AppAnim.FADE_DURATION, delayMillis = enterDelay)) +
+                slideInVertically(tween(AppAnim.SLIDE_DURATION, delayMillis = enterDelay)) { it / 4 }
     ) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .clickable { onClick() },
-            shape = RoundedCornerShape(14.dp)
-        ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(130.dp)
-                        .background(Color(template.thumbnailColor)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = template.name.take(1),
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White.copy(alpha = 0.2f)
-                    )
+            template = template,
+            isFavorited = isFavorited,
+            onClick = onClick,
+            onFavoriteToggle = onFavoriteToggle
+        )
+    }
+}
 
-                    if (template.isPremium) {
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(8.dp),
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.tertiary
-                        ) {
-                            Text(
-                                text = "PRO",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
+@Composable
+private fun Card(
+    template: QuoteTemplate,
+    isFavorited: Boolean,
+    onClick: () -> Unit,
+    onFavoriteToggle: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(AppCornerRadius.lg))
+            .clickable { onClick() }
+    ) {
+        Box(
+            template = template,
+            isFavorited = isFavorited,
+            onFavoriteToggle = onFavoriteToggle
+        )
+        Column(modifier = Modifier.padding(AppSpacing.md)) {
+            Text(
+                text = template.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(AppSpacing.xxs))
+            Text(
+                text = template.category.displayName,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
+}
 
-                    IconButton(
-                        onClick = onFavoriteToggle,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isFavorited) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (isFavorited) MaterialTheme.colorScheme.error else Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = template.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = template.category.displayName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
+@Composable
+private fun Box(
+    template: QuoteTemplate,
+    isFavorited: Boolean,
+    onFavoriteToggle: () -> Unit
+) {
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(130.dp)
+            .background(Color(template.thumbnailColor)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = template.name.take(1),
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White.copy(alpha = 0.2f)
+        )
+
+        if (template.isPremium) {
+            androidx.compose.material3.Surface(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(AppSpacing.sm),
+                shape = RoundedCornerShape(6.dp),
+                color = MaterialTheme.colorScheme.tertiary
+            ) {
+                Text(
+                    text = "PRO",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
             }
+        }
+
+        IconButton(
+            onClick = onFavoriteToggle,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(36.dp)
+        ) {
+            Icon(
+                imageVector = if (isFavorited) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                contentDescription = "Favorite",
+                tint = if (isFavorited) MaterialTheme.colorScheme.error else Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size(AppIconSize.md)
+            )
         }
     }
 }
