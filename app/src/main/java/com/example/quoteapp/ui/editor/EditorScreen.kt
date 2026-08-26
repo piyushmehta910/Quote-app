@@ -52,6 +52,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -106,6 +107,7 @@ import com.example.quoteapp.model.FontFamily
 import com.example.quoteapp.model.FontWeight
 import com.example.quoteapp.ui.theme.AppAnim
 import com.example.quoteapp.ui.theme.AppSpacing
+import com.example.quoteapp.ui.theme.AppSwatchSize
 import androidx.compose.ui.text.font.FontFamily as ComposeFontFamily
 import androidx.compose.ui.text.font.FontWeight as ComposeFontWeight
 import com.example.quoteapp.model.QuoteBackground
@@ -155,7 +157,7 @@ fun EditorScreen(
     var selectedTab by remember { mutableIntStateOf(1) }
     var showUnsavedDialog by remember { mutableStateOf(false) }
 
-    androidx.activity.compose.BackHandler {
+    BackHandler {
         if (uiState.quote.isNotBlank() || uiState.author.isNotBlank()) {
             showUnsavedDialog = true
         } else {
@@ -250,6 +252,44 @@ fun EditorScreen(
                 .padding(paddingValues)
         ) {
             val isTablet = this.maxWidth >= EditorLayout.tabletBreakpoint
+            val tabBar = @Composable {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    indicator = {
+                        TabRowDefaults.SecondaryIndicator(
+                            height = 3.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    divider = {}
+                ) {
+                    val tabLabels = listOf(
+                        "Text" to Icons.Filled.TextFields,
+                        "Style" to Icons.Filled.TextFormat,
+                        "Canvas" to Icons.Filled.Tune
+                    )
+                    tabLabels.forEachIndexed { index, (label, icon) ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = {
+                                selectedTab = index
+                                viewModel.setActiveTab(
+                                    when (index) {
+                                        0 -> EditorTab.TEXT
+                                        1 -> EditorTab.STYLE
+                                        else -> EditorTab.BACKGROUND
+                                    }
+                                )
+                            },
+                            text = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                            icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(AppIconSizeSm)) }
+                        )
+                    }
+                }
+            }
+
             val tabContent = @Composable {
                 AnimatedContent(
                     targetState = selectedTab,
@@ -268,37 +308,18 @@ fun EditorScreen(
                 }
             }
 
-            val tabBar = @Composable {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    indicator = { tabPositions ->
-                        if (selectedTab < tabPositions.size) {
-                            TabRowDefaults.SecondaryIndicator(
-                                modifier = Modifier,
-                                height = 3.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+            val previewPanel = @Composable {
+                WysiwygQuotePreview(
+                    uiState = uiState,
+                    onPositionChange = { target, x, y ->
+                        val current = if (target == TextTarget.QUOTE) uiState.quoteStyle else uiState.authorStyle
+                        val updated = current.copy(positionX = x, positionY = y)
+                        viewModel.updateCurrentTextStyle(updated)
                     },
-                    divider = {}
-                ) {
-                    val tabLabels = listOf("Text" to Icons.Filled.TextFields, "Style" to Icons.Filled.TextFormat, "Canvas" to Icons.Filled.Tune)
-                    tabLabels.forEachIndexed { index, (label, icon) ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = {
-                                selectedTab = index
-                                viewModel.setActiveTab(
-                                    when (index) { 0 -> EditorTab.TEXT; 1 -> EditorTab.STYLE; else -> EditorTab.BACKGROUND }
-                                )
-                            },
-                            text = { Text(label, style = MaterialTheme.typography.labelMedium) },
-                            icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                        )
-                    }
-                }
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(AppCornerRadiusLg))
+                )
             }
 
             if (isTablet) {
@@ -306,20 +327,10 @@ fun EditorScreen(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(16.dp),
+                            .padding(AppSpacing.xl),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        WysiwygQuotePreview(
-                            uiState = uiState,
-                            onPositionChange = { target, x, y ->
-                                val current = if (target == TextTarget.QUOTE) uiState.quoteStyle else uiState.authorStyle
-                                val updated = current.copy(positionX = x, positionY = y)
-                                viewModel.updateCurrentTextStyle(updated)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                        )
+                        previewPanel()
                     }
                     Column(
                         modifier = Modifier
@@ -343,24 +354,19 @@ fun EditorScreen(
                         LinearProgressIndicator(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = AppSpacing.lg),
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(AppSpacing.xs))
                     }
 
-                    WysiwygQuotePreview(
-                        uiState = uiState,
-                        onPositionChange = { target, x, y ->
-                            val current = if (target == TextTarget.QUOTE) uiState.quoteStyle else uiState.authorStyle
-                            val updated = current.copy(positionX = x, positionY = y)
-                            viewModel.updateCurrentTextStyle(updated)
-                        },
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                    )
+                            .heightIn(max = this@BoxWithConstraints.maxHeight * 0.4f)
+                    ) {
+                        previewPanel()
+                    }
 
                     tabBar()
 
@@ -396,88 +402,21 @@ fun EditorScreen(
 }
 
 @Composable
-private fun QuotePreview(
-    uiState: EditorState,
-    modifier: Modifier = Modifier
-) {
-    val quoteStyle = uiState.quoteStyle
-    val authorStyle = uiState.authorStyle
-    val bgColor = when (val bg = uiState.background) {
-        is QuoteBackground.SolidColor -> Color(bg.color)
-        is QuoteBackground.Gradient -> Color(bg.colors.firstOrNull() ?: 0xFF1A1A2EL)
-        is QuoteBackground.Image -> Color.LightGray
-        is QuoteBackground.PngBackground -> Color(0xFF2A2A2A)
-        is QuoteBackground.Programmatic -> Color(bg.baseColor)
-    }
-
-    val aspectRatioFloat = uiState.canvasSize.aspectRatio
-
-    Box(
+private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier
-            .aspectRatio(aspectRatioFloat)
-            .clip(RoundedCornerShape(12.dp))
-            .background(bgColor),
-        contentAlignment = Alignment.Center
-    ) {
-        if (uiState.background is QuoteBackground.Image) {
-            Text(text = "[ Image Background ]", color = Color.Gray, fontSize = 14.sp)
-        }
+    )
+}
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = when (quoteStyle.alignment) {
-                TextAlign.LEFT -> Alignment.Start
-                TextAlign.RIGHT -> Alignment.End
-                TextAlign.CENTER -> Alignment.CenterHorizontally
-            },
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = uiState.quote.ifEmpty { "Your quote here..." },
-                color = if (uiState.quote.isEmpty()) Color(quoteStyle.color).copy(alpha = 0.5f) else Color(quoteStyle.color),
-                fontSize = quoteStyle.fontSize.sp,
-                fontWeight = if (quoteStyle.isBold) ComposeFontWeight.Bold else quoteStyle.fontWeight.toComposeWeight(),
-                fontStyle = if (quoteStyle.isItalic) FontStyle.Italic else FontStyle.Normal,
-                letterSpacing = quoteStyle.letterSpacing.sp,
-                lineHeight = (quoteStyle.fontSize * quoteStyle.lineHeight).sp,
-                textAlign = when (quoteStyle.alignment) {
-                    TextAlign.LEFT -> androidx.compose.ui.text.style.TextAlign.Left
-                    TextAlign.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
-                    TextAlign.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
-                },
-                fontFamily = resolveFontFamily(quoteStyle),
-                modifier = Modifier.rotate(quoteStyle.rotation)
-            )
-
-            if (uiState.author.isNotEmpty() || uiState.source.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = buildString {
-                        if (uiState.author.isNotEmpty()) append("\u2014 ${uiState.author}")
-                        if (uiState.source.isNotEmpty()) {
-                            if (uiState.author.isNotEmpty()) append("\n")
-                            append(uiState.source)
-                        }
-                    },
-                    color = Color(authorStyle.color),
-                    fontSize = authorStyle.fontSize.sp,
-                    fontWeight = if (authorStyle.isBold) ComposeFontWeight.Bold else authorStyle.fontWeight.toComposeWeight(),
-                    fontStyle = if (authorStyle.isItalic) FontStyle.Italic else FontStyle.Normal,
-                    letterSpacing = authorStyle.letterSpacing.sp,
-                    lineHeight = (authorStyle.fontSize * authorStyle.lineHeight).sp,
-                    textAlign = when (authorStyle.alignment) {
-                        TextAlign.LEFT -> androidx.compose.ui.text.style.TextAlign.Left
-                        TextAlign.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
-                        TextAlign.RIGHT -> androidx.compose.ui.text.style.TextAlign.Right
-                    },
-                    fontFamily = resolveFontFamily(authorStyle),
-                    modifier = Modifier.rotate(authorStyle.rotation)
-                )
-            }
-        }
-    }
+@Composable
+private fun SectionDivider(modifier: Modifier = Modifier) {
+    HorizontalDivider(
+        modifier = modifier.padding(vertical = AppSpacing.xs),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+    )
 }
 
 @Composable
@@ -490,15 +429,15 @@ private fun TextTab(
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.md)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
             FilterChip(
                 selected = uiState.activeTextTarget == TextTarget.QUOTE,
                 onClick = { viewModel.setActiveTextTarget(TextTarget.QUOTE) },
                 label = { Text("Quote") },
                 leadingIcon = {
                     if (uiState.activeTextTarget == TextTarget.QUOTE) {
-                        Icon(Icons.Filled.TextFields, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.TextFields, contentDescription = null, modifier = Modifier.size(AppIconSizeSm))
                     }
                 },
                 colors = FilterChipDefaults.filterChipColors(
@@ -511,7 +450,7 @@ private fun TextTab(
                 label = { Text("Author") },
                 leadingIcon = {
                     if (uiState.activeTextTarget == TextTarget.AUTHOR) {
-                        Icon(Icons.Filled.TextFields, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.TextFields, contentDescription = null, modifier = Modifier.size(AppIconSizeSm))
                     }
                 },
                 colors = FilterChipDefaults.filterChipColors(
@@ -566,24 +505,20 @@ private fun StyleTab(
     var googleFontSearch by remember { mutableStateOf("") }
     var selectedFontCategory by remember { mutableStateOf<FontCatalog.FontCategory?>(null) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Style Presets",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.md)) {
+        SectionLabel("Style Presets")
 
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
             items(TextStylePresets.getAll()) { preset ->
                 OutlinedCard(
                     modifier = Modifier
                         .width(100.dp)
                         .clickable { viewModel.applyTextStylePreset(preset) },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(AppCornerRadiusSm),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(AppSpacing.md),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -593,7 +528,7 @@ private fun StyleTab(
                             fontStyle = if (preset.settings.isItalic) FontStyle.Italic else FontStyle.Normal,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(AppSpacing.xs))
                         Text(
                             text = preset.displayName,
                             style = MaterialTheme.typography.labelSmall,
@@ -604,10 +539,10 @@ private fun StyleTab(
             }
         }
 
-        Text(
-            text = if (uiState.activeTextTarget == TextTarget.QUOTE) "Quote Styling" else "Author Styling",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
+        SectionDivider()
+
+        SectionLabel(
+            if (uiState.activeTextTarget == TextTarget.QUOTE) "Quote Styling" else "Author Styling"
         )
 
         StyleSlider(
@@ -652,15 +587,13 @@ private fun StyleTab(
             valueDisplay = { "${it.toInt()}\u00B0" }
         )
 
-        Text(
-            text = "Toggles",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        SectionDivider()
+
+        SectionLabel("Toggles")
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.lg)
         ) {
             ToggleSwitch(
                 label = "Bold",
@@ -674,11 +607,6 @@ private fun StyleTab(
                 onToggle = { updateStyle(currentStyle.copy(isItalic = !currentStyle.isItalic)) },
                 modifier = Modifier.weight(1f)
             )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
             ToggleSwitch(
                 label = "Auto Fit",
                 checked = currentStyle.autoFit,
@@ -687,11 +615,7 @@ private fun StyleTab(
             )
         }
 
-        Text(
-            text = "Alignment",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        SectionLabel("Alignment")
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -723,23 +647,17 @@ private fun StyleTab(
             }
         }
 
-        Text(
-            text = "Font Weight",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        SectionDivider()
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            FontWeight.entries.forEach { weight ->
+        SectionLabel("Font Weight")
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs)) {
+            items(FontWeight.entries.toList()) { weight ->
                 val isActive = currentStyle.fontWeight == weight
                 FilterChip(
                     selected = isActive,
                     onClick = { updateStyle(currentStyle.copy(fontWeight = weight)) },
                     label = { Text(weight.displayName, fontSize = 10.sp) },
-                    modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
                     )
@@ -747,15 +665,11 @@ private fun StyleTab(
             }
         }
 
-        Text(
-            text = "Font Family",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        SectionLabel("Font Family")
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)
         ) {
             val fontOptions = listOf(
                 "Default" to FontFamily.DEFAULT,
@@ -779,11 +693,7 @@ private fun StyleTab(
         }
 
         if (GoogleFontProvider.isAvailable()) {
-            Text(
-                text = "Google Fonts",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            SectionLabel("Google Fonts")
 
             TextField(
                 value = googleFontSearch,
@@ -797,19 +707,18 @@ private fun StyleTab(
                 )
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                FilterChip(
-                    selected = selectedFontCategory == null,
-                    onClick = { selectedFontCategory = null },
-                    label = { Text("All", fontSize = 10.sp) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs)) {
+                item {
+                    FilterChip(
+                        selected = selectedFontCategory == null,
+                        onClick = { selectedFontCategory = null },
+                        label = { Text("All", fontSize = 10.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
                     )
-                )
-                FontCatalog.FontCategory.entries.forEach { cat ->
+                }
+                items(FontCatalog.FontCategory.entries.toList()) { cat ->
                     FilterChip(
                         selected = selectedFontCategory == cat,
                         onClick = { selectedFontCategory = cat },
@@ -830,16 +739,16 @@ private fun StyleTab(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 240.dp)
+                    .heightIn(max = 180.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.xs)
             ) {
                 filteredFonts.forEach { fontEntry ->
                     val isGoogleSelected = currentStyle.googleFontFamily == fontEntry.googleFontName
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(AppCornerRadiusSm))
                             .background(
                                 if (isGoogleSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                                 else Color.Transparent
@@ -852,7 +761,7 @@ private fun StyleTab(
                                     )
                                 )
                             }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            .padding(horizontal = AppSpacing.md, vertical = AppSpacing.sm),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -879,18 +788,14 @@ private fun StyleTab(
             )
         }
 
-        Text(
-            text = "Color",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        SectionDivider()
+
+        SectionLabel("Color")
 
         com.example.quoteapp.ui.editor.components.ColorSwatchRow(
             selectedColor = currentStyle.color,
             onColorSelected = { color -> updateStyle(currentStyle.copy(color = color)) }
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         com.example.quoteapp.ui.editor.components.TextControls(
             style = currentStyle,
@@ -907,14 +812,10 @@ private fun SettingsTab(
     var bgSubTab by remember { mutableIntStateOf(0) }
     var showGradientEditor by remember { mutableStateOf(false) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Background",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.md)) {
+        SectionLabel("Background")
 
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs)) {
             val bgTabs = listOf("Solid", "Gradient", "PNG", "Pattern")
             bgTabs.forEachIndexed { index, label ->
                 FilterChip(
@@ -936,15 +837,15 @@ private fun SettingsTab(
                     0xFF0A1929L, 0xFF2D2D3AL, 0xFF3C1642L, 0xFF0B0C10L,
                     0xFFF5F5DCL, 0xFFFAF0E6L, 0xFF2E4057L, 0xFF1B1B2FL
                 )
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
                     items(solidColors.size) { index ->
                         val color = solidColors[index]
                         val isSelected = uiState.background is QuoteBackground.SolidColor &&
                             uiState.background.color == color
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .size(AppSwatchSize.lg)
+                                .clip(RoundedCornerShape(AppCornerRadiusSm))
                                 .background(Color(color))
                                 .then(if (isSelected) Modifier.padding(2.dp) else Modifier)
                                 .clickable { viewModel.updateBackground(QuoteBackground.SolidColor(color)) }
@@ -954,7 +855,7 @@ private fun SettingsTab(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(2.dp)
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(6.dp))
                                         .background(Color.White.copy(alpha = 0.3f))
                                 )
                             }
@@ -965,9 +866,7 @@ private fun SettingsTab(
             1 -> {
                 if (showGradientEditor && uiState.background is QuoteBackground.Gradient) {
                     val gradient = uiState.background as QuoteBackground.Gradient
-                    androidx.compose.material3.TextButton(
-                        onClick = { showGradientEditor = false }
-                    ) {
+                    TextButton(onClick = { showGradientEditor = false }) {
                         Text("\u2190 Back to presets")
                     }
                     com.example.quoteapp.ui.editor.components.GradientEditor(
@@ -976,9 +875,9 @@ private fun SettingsTab(
                     )
                 } else {
                     val presets = com.example.quoteapp.data.GradientPresets.getAll()
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
                         presets.chunked(4).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
                                 row.forEach { preset ->
                                     val isSelected = uiState.background is QuoteBackground.Gradient &&
                                         uiState.background.colors == preset.background.colors
@@ -986,7 +885,7 @@ private fun SettingsTab(
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(44.dp)
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(RoundedCornerShape(AppCornerRadiusSm))
                                             .background(
                                                 androidx.compose.ui.graphics.Brush.linearGradient(
                                                     colors = preset.background.colors.map { Color(it) }
@@ -1022,7 +921,7 @@ private fun SettingsTab(
             }
             3 -> {
                 val patterns = com.example.quoteapp.model.PatternType.entries
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
                     items(patterns.size) { index ->
                         val pattern = patterns[index]
                         val isSelected = uiState.background is QuoteBackground.Programmatic &&
@@ -1035,7 +934,7 @@ private fun SettingsTab(
                                         QuoteBackground.Programmatic(pattern = pattern)
                                     )
                                 },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(AppCornerRadiusSm),
                             border = BorderStroke(
                                 width = if (isSelected) 2.dp else 1.dp,
                                 color = if (isSelected) MaterialTheme.colorScheme.primary
@@ -1045,7 +944,7 @@ private fun SettingsTab(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(AppSpacing.md),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -1061,11 +960,9 @@ private fun SettingsTab(
             }
         }
 
-        Text(
-            text = "Aspect Ratio",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        SectionDivider()
+
+        SectionLabel("Aspect Ratio")
 
         val commonRatios = listOf(
             AspectRatios.instagramPost,
@@ -1078,12 +975,12 @@ private fun SettingsTab(
             AspectRatios.portrait916
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
             val rows = commonRatios.chunked(4)
             rows.forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)
                 ) {
                     row.forEach { ratio ->
                         val isSelected = uiState.aspectRatio.id == ratio.id
@@ -1093,7 +990,7 @@ private fun SettingsTab(
                                 .clickable {
                                     viewModel.updateAspectRatio(ratio)
                                 },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(AppCornerRadiusSm),
                             border = BorderStroke(
                                 width = if (isSelected) 2.dp else 1.dp,
                                 color = if (isSelected) MaterialTheme.colorScheme.primary
@@ -1108,7 +1005,7 @@ private fun SettingsTab(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(AppSpacing.md),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -1127,13 +1024,11 @@ private fun SettingsTab(
             }
         }
 
-        Text(
-            text = "Export Format",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        SectionDivider()
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel("Export Format")
+
+        Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
             ExportFormat.entries.forEach { format ->
                 FilterChip(
                     selected = uiState.exportSettings.format == format,
@@ -1149,13 +1044,9 @@ private fun SettingsTab(
             }
         }
 
-        Text(
-            text = "Export Quality",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        SectionLabel("Export Quality")
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
             ExportQuality.entries.forEach { quality ->
                 FilterChip(
                     selected = uiState.exportSettings.quality == quality,
@@ -1171,7 +1062,7 @@ private fun SettingsTab(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(AppSpacing.sm))
 
         var showResetDialog by remember { mutableStateOf(false) }
 
@@ -1220,43 +1111,47 @@ private fun BottomActionBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                .padding(horizontal = AppSpacing.lg, vertical = AppSpacing.sm),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onUndo, enabled = canUndo) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Undo,
-                    contentDescription = "Undo",
-                    tint = if (canUndo) MaterialTheme.colorScheme.onSurface
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs)) {
+                IconButton(onClick = onUndo, enabled = canUndo) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Undo,
+                        contentDescription = "Undo",
+                        tint = if (canUndo) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                }
+                IconButton(onClick = onRedo, enabled = canRedo) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Redo,
+                        contentDescription = "Redo",
+                        tint = if (canRedo) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                }
             }
-            IconButton(onClick = onRedo, enabled = canRedo) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Redo,
-                    contentDescription = "Redo",
-                    tint = if (canRedo) MaterialTheme.colorScheme.onSurface
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                )
-            }
-            FilledTonalButton(onClick = onExport) {
-                Icon(
-                    Icons.Filled.FileDownload,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Export")
-            }
-            FilledTonalButton(onClick = onShare) {
-                Icon(
-                    Icons.Filled.Share,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Share")
+            Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)) {
+                FilledTonalButton(onClick = onExport) {
+                    Icon(
+                        Icons.Filled.FileDownload,
+                        contentDescription = null,
+                        modifier = Modifier.size(AppIconSizeSm)
+                    )
+                    Spacer(modifier = Modifier.width(AppSpacing.xs))
+                    Text("Export")
+                }
+                FilledTonalButton(onClick = onShare) {
+                    Icon(
+                        Icons.Filled.Share,
+                        contentDescription = null,
+                        modifier = Modifier.size(AppIconSizeSm)
+                    )
+                    Spacer(modifier = Modifier.width(AppSpacing.xs))
+                    Text("Share")
+                }
             }
         }
     }
@@ -1289,6 +1184,10 @@ private fun ToggleSwitch(
         )
     }
 }
+
+private val AppIconSizeSm = 18.dp
+private val AppCornerRadiusSm = 8.dp
+private val AppCornerRadiusLg = 12.dp
 
 private suspend fun performExport(
     context: android.content.Context,

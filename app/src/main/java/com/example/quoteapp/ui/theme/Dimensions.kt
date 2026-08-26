@@ -48,6 +48,12 @@ object AppIconSize {
     val empty = 64.dp
 }
 
+object AppSwatchSize {
+    val sm = 32.dp
+    val md = 36.dp
+    val lg = 40.dp
+}
+
 object EditorLayout {
     val tabletBreakpoint = 600.dp
 }
